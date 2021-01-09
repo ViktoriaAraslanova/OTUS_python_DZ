@@ -18,7 +18,7 @@ def csv_reader(path):
 
 
 def json_writer(path, json_obj):
-    with open(path, 'w') as f:
+    with open(path, 'w+') as f:
         f.write(json.dumps(json_obj, indent=4))
 
 
