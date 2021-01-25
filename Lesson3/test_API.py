@@ -1,33 +1,14 @@
 import pytest
-import requests
-from jsonschema import validate
-import json
 
 
 TODOS_MAX = 200
 USER_ID_MAX = 10
 
 
-def assert_valid_schema(data, schema_file):
-    with open(schema_file) as f:
-        schema = json.load(f)
-    return validate(instance=data, schema=schema)
-
-@pytest.fixture()
-def base_url():
-    return "https://jsonplaceholder.typicode.com/todos"
-
-
-@pytest.fixture()
-def session():
-    return requests.Session()
-
-
 @pytest.mark.parametrize('todos_id', [1, TODOS_MAX])
 def test_positive_getting_a_resource(session, base_url, todos_id):
     res = session.get(f'{base_url}/{todos_id}')
     assert res.status_code == 200
-    assert_valid_schema(res.json(), 'schemas/getting_a_resource_schema.json')
     assert res.json()['id'] == todos_id
 
 
@@ -42,7 +23,6 @@ def test_positive_listing_all_resources(session, base_url):
     res = session.get(f'{base_url}')
     json = res.json()
     assert res.status_code == 200
-    assert_valid_schema(res.json(), 'schemas/listing_all_resources_schema.json')
     assert len(json) == TODOS_MAX
 
 
@@ -65,7 +45,12 @@ def test_positive_updating_a_resource_with_put(session, base_url, todos_id):
     user_id = 1
     title = "test title"
     completed = True
-    payload = {"userId": user_id, "id": todos_id, "title": title, "completed": completed}
+    payload = {
+        "userId": user_id,
+        "id": todos_id,
+        "title": title,
+        "completed": completed
+    }
     res = session.put(url=f'{base_url}/{todos_id}', json=payload)
     assert res.status_code == 200
     json = res.json()
@@ -80,7 +65,12 @@ def test_negative_updating_a_resource(session, base_url, todos_id):
     user_id = 1
     title = "test title"
     completed = True
-    payload = {"userId": user_id, "id": todos_id, "title": title, "completed": completed}
+    payload = {
+        "userId": user_id,
+        "id": todos_id,
+        "title": title,
+        "completed": completed
+    }
     res = session.put(url=f'{base_url}/{todos_id}', json=payload)
     assert res.status_code == 500
 
@@ -106,72 +96,50 @@ def test_positive_deleting_a_resource(session, base_url, todos_id):
     assert not res.json()
 
 
-@pytest.mark.parametrize('user_id', [1, USER_ID_MAX])
-def test_positive_filtering_resources_userId(session, base_url, user_id):
-    res = session.get(f'{base_url}?userId={user_id}')
+@pytest.mark.parametrize(
+    'field, value',
+    [('userId', USER_ID_MAX),
+     ('id', TODOS_MAX),
+     ('title', 'delectus aut autem'),
+     ('completed', True)]
+)
+def test_positive_filtering_resources(session, base_url, field, value):
+    str_val = str(value).lower() if isinstance(value, bool) else str(value)
+    res = session.get(base_url, params={field: str_val})
     assert res.status_code == 200
+    assert len(res.json()) != 0
     for i in res.json():
-        assert i['userId'] == user_id
-
-
-@pytest.mark.parametrize('id', [1, TODOS_MAX])
-def test_positive_filtering_resources_id(session, base_url, id):
-    res = session.get(f'{base_url}?id={id}')
-    assert res.status_code == 200
-    for i in res.json():
-        assert i['id'] == id
-
-
-@pytest.mark.parametrize('title', ["delectus aut autem", "quis ut nam facilis et officia qui"])
-def test_positive_filtering_resources_title(session, base_url, title):
-    res = session.get(f'{base_url}?title={title}')
-    assert res.status_code == 200
-    for i in res.json():
-        assert i['title'] == title
-
-
-@pytest.mark.parametrize('completed', [True, False])
-def test_positive_filtering_resources_completed(session, base_url, completed):
-    res = session.get(f'{base_url}?completed={completed}')
-    assert res.status_code == 200
-    for i in res.json():
-        assert i['completed'] == completed
+        assert i[field] == value
 
 
 def test_positive_filtering_resources_all_params(session, base_url):
+    user_id = 1
+    id = 1
     title = "delectus aut autem"
-    res = session.get(f'{base_url}?userId={1}&id={1}&title={title}&completed={True}')
+    completed = False
+    res = session.get(
+        f'{base_url}?'
+        f'userId={user_id}'
+        f'&id={id}'
+        f'&title={title}'
+        f'&completed={str(completed).lower()}')
     assert res.status_code == 200
+    assert len(res.json()) != 0
     for i in res.json():
-        assert i['id'] == 1
-        assert i['userId'] == 1
+        assert i['id'] == id
+        assert i['userId'] == user_id
         assert i['title'] == title
-        assert i['completed'] == True
+        assert i['completed'] == completed
 
 
-@pytest.mark.parametrize('id', [0, TODOS_MAX + 1])
-def test_negative_filtering_resources_id(session, base_url, id):
-    res = session.get(f'{base_url}?id={id}')
+@pytest.mark.parametrize(
+    'field, value',
+    [('id', TODOS_MAX + 1),
+     ('userId', USER_ID_MAX + 1),
+     ('title', 'test'),
+     ('completed', 'test')]
+)
+def test_negative_filtering_resources_id(session, base_url, field, value):
+    res = session.get(base_url, params={field: value})
     assert res.status_code == 200
     assert not res.json()
-
-
-@pytest.mark.parametrize('user_id', [0, USER_ID_MAX + 1])
-def test_negative_filtering_resources_userId(session, base_url, user_id):
-    res = session.get(f'{base_url}?userId={user_id}')
-    assert res.status_code == 200
-    assert not res.json()
-
-
-def test_negative_filtering_resources_title(session, base_url):
-    res = session.get(f'{base_url}?title={"test"}')
-    assert res.status_code == 200
-    assert not res.json()
-
-
-def test_negative_filtering_resources_completed(session, base_url):
-    res = session.get(f'{base_url}?completed={"test"}')
-    assert res.status_code == 200
-    assert not res.json()
-
-
