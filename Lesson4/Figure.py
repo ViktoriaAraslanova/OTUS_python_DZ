@@ -79,7 +79,11 @@ class Triangle(Figure):
     @property
     def area(self):
         pp = self.perimeter / 2
-        return math.sqrt(pp * ((pp - self.side1) * (pp - self.side2) * (pp - self.side3)))
+        return math.sqrt(
+            pp * ((pp - self.side1) *
+                  (pp - self.side2) *
+                  (pp - self.side3))
+        )
 
     @property
     def perimeter(self):
@@ -103,6 +107,3 @@ class Circle(Figure):
     @property
     def perimeter(self):
         return round(self.radius*2*math.pi, 2)
-
-
-
