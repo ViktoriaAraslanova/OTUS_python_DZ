@@ -1,0 +1,5 @@
+{
+  "type": "array",
+  "items": {"$ref": "file:schemas/getting_a_resource_schema.json"},
+  "additionalProperties": false
+}
